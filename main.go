@@ -2,43 +2,30 @@ package main
 
 import (
 	"context"
+	"go.etcd.io/etcd/clientv3"
 	"log"
 	"time"
-	"go.etcd.io/etcd/v3/client"
 )
 
 func main() {
-	cfg := client.Config{
-		Endpoints:               []string{"http://localhost:2379"},
-		Transport:               client.DefaultTransport,
-		// set timeout per request to fail fast when the target endpoint is unavailable
-		HeaderTimeoutPerRequest: time.Second,
-	}
-	c, err := client.New(cfg)
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{"localhost:2379"},
+		DialTimeout: 5 * time.Second,
+	})
 	if err != nil {
-		log.Fatal(err)
+		// handle error!
+		log.Println(err)
 	}
+	defer cli.Close()
 
-	log.Println(c)
-	kapi := client.NewKeysAPI(c)
-	// set "/foo" key with "bar" value
-	log.Print("Setting '/foo' key with 'bar' value")
-	resp, err := kapi.Set(context.Background(), "/foo", "bar", nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	resp, err := cli.Put(ctx, "sample_key", "sample_value")
+	cancel()
 	if err != nil {
-		log.Fatal(err)
-	} else {
-		// print common key info
-		log.Printf("Set is done. Metadata is %q\n", resp)
+		// handle error!
+		log.Println(err)
 	}
-	// get "/foo" key's value
-	log.Print("Getting '/foo' key value")
-	resp, err = kapi.Get(context.Background(), "/foo", nil)
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		// print common key info
-		log.Printf("Get is done. Metadata is %q\n", resp)
-		// print value
-		log.Printf("%q key has %q value\n", resp.Node.Key, resp.Node.Value)
-	}
+	// use the response
+
+	log.Println(resp)
 }
